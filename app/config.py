@@ -21,8 +21,12 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = True
 
+    # --- server ---
+    host: str = "127.0.0.1"
+    port: int = 8000
+
     # --- persistence ---
-    database_url: str = "sqlite:///./skin_diagnosis.db"
+    database_url: str  # required — set SKINDX_DATABASE_URL in .env, no default
 
     # --- auth ---
     jwt_secret: str = "dev-insecure-change-me-0000000000000000"
