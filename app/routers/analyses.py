@@ -14,7 +14,7 @@ from app.models.user import User
 from app.schemas.analysis import AnalysisCreate, AnalysisRead, AnalysisSummary
 from app.schemas.feedback import FeedbackCreate, FeedbackRead
 from app.services import audit
-from app.services.analysis_service import run_analysis
+from app.tasks import run_analysis_task
 
 router = APIRouter(prefix="/v1/analyses", tags=["analyses"])
 
@@ -38,7 +38,7 @@ def _to_read(analysis: AnalysisRequest) -> AnalysisRead:
     return model
 
 
-@router.post("", response_model=AnalysisRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AnalysisRead, status_code=status.HTTP_202_ACCEPTED)
 def create_analysis(
     payload: AnalysisCreate,
     request: Request,
@@ -69,11 +69,9 @@ def create_analysis(
         ),
     )
     db.add(analysis)
-    db.flush()
+    db.commit()  # row must be visible to the worker's own DB session before enqueueing
 
-    # Synchronous: fine for the mock adapter. For a real model, enqueue a job
-    # here and return 202 with status=pending instead (DB shape is unchanged).
-    run_analysis(db, analysis)
+    run_analysis_task.delay(analysis.id)
 
     audit.record(
         db,
@@ -82,9 +80,15 @@ def create_analysis(
         resource_id=analysis.id,
         actor_id=user.id,
         ip_address=request.client.host if request.client else None,
-        context={"status": analysis.status, "triage_level": analysis.triage_level},
+        context={"status": analysis.status},
     )
     db.commit()
+
+    # Expire + reload: in real (non-eager) mode the task hasn't run yet, so
+    # this reflects status=pending. In eager mode (tests/local dev with no
+    # broker) the task already ran and committed by the time .delay() returned
+    # above, so this picks up the completed result — same code, both paths.
+    db.expire(analysis)
     return _to_read(_load_full(db, analysis.id))
 
 

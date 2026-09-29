@@ -4,6 +4,9 @@ uvicorn[standard]>=0.30
 sqlalchemy>=2.0
 psycopg[binary]>=3.1    # PostgreSQL driver (sync; matches SQLAlchemy's sync engine)
 alembic>=1.13           # schema migrations
+celery>=5.4             # async task queue (background inference)
+redis>=5.0              # celery broker/result backend client
+google-cloud-vision>=3.7  # SKINDX_INFERENCE_ADAPTER=google_vision
 pydantic[email]>=2.7
 pydantic-settings>=2.3
 python-multipart>=0.0.9
