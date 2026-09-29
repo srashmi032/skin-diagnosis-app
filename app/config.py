@@ -46,11 +46,17 @@ class Settings(BaseSettings):
     min_image_dimension_px: int = 200
 
     # --- inference / triage ---
-    inference_adapter: str = "mock"  # mock | hosted_vision | custom
+    inference_adapter: str = "mock"  # mock | google_vision | custom
     model_version: str = "mock-v0.1.0"
     top_k_predictions: int = 5
     # top confidence below this floor => route to "see a professional"
     referral_confidence_floor: float = 0.45
+
+    # --- background jobs (async inference) ---
+    redis_url: str 
+    # True: tasks run in-process immediately (no Redis/worker needed) — local
+    # dev & test default. False: tasks are queued for a real `celery worker`.
+    celery_task_always_eager: bool = False
 
     # --- compliance ---
     policy_version: str = "1.0"
